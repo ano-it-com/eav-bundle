@@ -1,0 +1,40 @@
+{
+  "name": "ano-it-com/eav-bundle",
+  "version": "0.1.0",
+  "description": "Typed EAV Bundle",
+  "type": "symfony-bundle",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "AUTONOMOUS NONPROFIT ORGANIZATION \"RESEARCH CENTER\" INFORMATION TECHNOLOGIES",
+      "homepage": "https://github.com/ano-it-com/"
+    }
+  ],
+  "require": {
+    "php": "^7.4"
+  },
+  "require-dev": {
+  },
+  "config": {
+    "sort-packages": true
+  },
+  "autoload": {
+    "psr-4": {
+      "ANOITCOM\\EAVBundle\\": "src"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "ANOITCOM\\EAVBundle\\Tests\\": "tests"
+    }
+  },
+  "scripts": {
+    "test": "./vendor/bin/simple-phpunit"
+  },
+  "extra": {
+    "symfony": {
+      "allow-contrib": false,
+      "require": "5.1.*"
+    }
+  }
+}
