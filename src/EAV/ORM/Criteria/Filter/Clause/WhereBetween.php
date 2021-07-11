@@ -27,11 +27,11 @@ class WhereBetween extends AbstractClause implements ClauseInterface
     }
 
 
-    protected function makeExpression(QueryBuilder $qb, EAVSettings $eavSettings, ColumnInterface $column, string $parameterName): FilterExpression
+    protected function makeExpression(QueryBuilder $qb, string $tableName, ColumnInterface $column, EAVSettings $eavSettings, string $parameterName): FilterExpression
     {
         $expr = $qb->expr()->andX(
-            $expr1 = $qb->expr()->gte($column->getFullName($eavSettings), ':' . $parameterName . '1'),
-            $expr2 = $qb->expr()->lte($column->getFullName($eavSettings), ':' . $parameterName . '2')
+            $expr1 = $qb->expr()->gte($column->getFullName($tableName), ':' . $parameterName . '1'),
+            $expr2 = $qb->expr()->lte($column->getFullName($tableName), ':' . $parameterName . '2')
         );
 
         return new FilterExpression(

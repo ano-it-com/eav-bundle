@@ -2,13 +2,9 @@
 
 namespace ANOITCOM\EAVBundle\EAV\ORM\Persistence\Persister\Entity\Builder;
 
-use ANOITCOM\EAVBundle\EAV\ORM\Entity\EAVPersistableInterface;
+use ANOITCOM\EAVBundle\EAV\ORM\Persistence\Builder\WithNestedEntityBuilderInterface;
 
-interface EAVEntityBuilderInterface
+interface EAVEntityBuilderInterface extends WithNestedEntityBuilderInterface
 {
 
-    public function buildEntities(array $entityRows, array $valuesRows): array;
-
-
-    public function extractData(EAVPersistableInterface $entity): array;
 }

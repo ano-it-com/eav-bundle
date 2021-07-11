@@ -16,5 +16,5 @@ interface ColumnInterface
     public function getJoinTables(EAVSettings $eavSettings): array;
 
 
-    public function getFullName(EAVSettings $eavSettings): string;
+    public function getFullName(string $tableName): string;
 }

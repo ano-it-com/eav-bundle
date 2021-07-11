@@ -17,12 +17,14 @@ class EAVPersistersFactory implements EAVPersistersFactoryInterface
     }
 
 
-    public function getForClass(string $class, EAVEntityManagerInterface $em): EAVPersisterInterface
+    public function getForEntityClass(string $class, EAVEntityManagerInterface $em): EAVPersisterInterface
     {
-        if ( ! $this->persistersLocator->hasPersisterByClass($class)) {
-            throw new \InvalidArgumentException('Persister for class ' . $class . ' not found!');
+        $persisterClass = $em->getEavSettings()->getPersisterClassForEntityClass($class);
+
+        if ( ! $persisterClass || ! $this->persistersLocator->has($persisterClass)) {
+            throw new \InvalidArgumentException('Persister \'' . $persisterClass . '\' for class \'' . $class . '\' not found!');
         }
 
-        return $this->persistersLocator->getPersisterByClass($class);
+        return $this->persistersLocator->get($persisterClass);
     }
 }

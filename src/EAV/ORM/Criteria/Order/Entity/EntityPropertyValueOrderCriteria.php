@@ -42,7 +42,7 @@ class EntityPropertyValueOrderCriteria implements OrderCriteriaInterface
         $propertyFinder = new PropertyFinder($qb->getConnection());
         $property       = $propertyFinder->getPropertyInfoById($this->propertyTypeId);
 
-        $valuesTableName = $eavSettings->getValuesTableName();
+        $valuesTableName = $eavSettings->getTableNameForEntityType(EAVSettings::VALUES);
         $column          = $eavSettings->getColumnNameForValueType($property->getValueType());
 
         $joinedTableAlias = $this->getJoinedTableAlias($valuesTableName, $uniqueIndex);
@@ -72,8 +72,8 @@ class EntityPropertyValueOrderCriteria implements OrderCriteriaInterface
 
     private function getJoinTables(EAVSettings $eavSettings, int $uniqueIndex): array
     {
-        $entityTableName  = $eavSettings->getEntityTableName();
-        $valuesTableName  = $eavSettings->getValuesTableName();
+        $entityTableName  = $eavSettings->getTableNameForEntityType(EAVSettings::ENTITY);
+        $valuesTableName  = $eavSettings->getTableNameForEntityType(EAVSettings::VALUES);
         $joinedTableAlias = $this->getJoinedTableAlias($valuesTableName, $uniqueIndex);
 
         return [

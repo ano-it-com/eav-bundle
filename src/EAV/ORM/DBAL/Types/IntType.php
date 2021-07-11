@@ -7,12 +7,23 @@ use ANOITCOM\EAVBundle\EAV\ORM\DBAL\ValueTypeInterface;
 class IntType extends AbstractType implements ValueTypeInterface
 {
 
-    public const INT = 3;
+    public const CODE = 3;
 
 
     public function getCode(): int
     {
-        return self::INT;
+        return self::CODE;
     }
 
+
+    public function convertToPhp($value): ?int
+    {
+        return $value === null ? null : (int)$value;
+    }
+
+
+    public function convertToDatabase($value)
+    {
+        return $value;
+    }
 }

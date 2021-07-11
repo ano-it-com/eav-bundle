@@ -8,6 +8,6 @@ use ANOITCOM\EAVBundle\EAV\ORM\Persistence\Persister\EAVPersisterInterface;
 interface EAVPersistersFactoryInterface
 {
 
-    public function getForClass(string $class, EAVEntityManagerInterface $em): EAVPersisterInterface;
+    public function getForEntityClass(string $class, EAVEntityManagerInterface $em): EAVPersisterInterface;
 
 }

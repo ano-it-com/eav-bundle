@@ -19,7 +19,15 @@ abstract class AbstractClause
     {
         $parameterName = $this->makePlaceholderParam();
 
-        return $this->makeExpression($qb, $eavSettings, $this->column, $parameterName,);
+        $fromPart = $qb->getQueryPart('from');
+
+        if (count($fromPart) !== 1) {
+            throw new \InvalidArgumentException('Multiple from tables doesn\'t supports!');
+        }
+
+        $tableName = $fromPart[0]['table'];
+
+        return $this->makeExpression($qb, $tableName, $this->column, $eavSettings, $parameterName);
 
     }
 
@@ -30,6 +38,6 @@ abstract class AbstractClause
     }
 
 
-    abstract protected function makeExpression(QueryBuilder $qb, EAVSettings $eavSettings, ColumnInterface $column, string $parameterName);
+    abstract protected function makeExpression(QueryBuilder $qb, string $tableName, ColumnInterface $column, EAVSettings $eavSettings, string $parameterName);
 
 }

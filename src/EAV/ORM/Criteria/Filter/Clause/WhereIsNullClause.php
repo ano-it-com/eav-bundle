@@ -21,9 +21,9 @@ class WhereIsNullClause extends AbstractClause implements ClauseInterface
     }
 
 
-    protected function makeExpression(QueryBuilder $qb, EAVSettings $eavSettings, ColumnInterface $column, string $parameterName): FilterExpression
+    protected function makeExpression(QueryBuilder $qb, string $tableName, ColumnInterface $column, EAVSettings $eavSettings, string $parameterName): FilterExpression
     {
-        $expr = $qb->expr()->isNull($column->getFullName($eavSettings));
+        $expr = $qb->expr()->isNull($column->getFullName($tableName));
 
         return new FilterExpression($expr, [], $this->column->getJoinTables($eavSettings), $this->isAnd);
     }

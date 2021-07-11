@@ -19,39 +19,6 @@ class PropertyFinder
     }
 
 
-    public function getPropertyTypeVariantsByAliases(array $propertyAliases): array
-    {
-        $qb = $this->connection->createQueryBuilder();
-
-        $qb->from('eav_type_property')
-           ->select([ 'eav_type_property.id', 'eav_type_property.alias', 'eav_type_property.value_type' ]);
-
-        $expr = $qb->expr()->in('eav_type_property.alias', ':aliases');
-
-        $stmt = $qb->where($expr)->setParameter('aliases', $propertyAliases, Connection::PARAM_STR_ARRAY)->execute();
-
-        $data = $stmt->fetchAll();
-
-        return $this->makeResultFromRows($data, 'alias');
-    }
-
-
-    private function makeResultFromRows(array $rows, string $keyBy): array
-    {
-        $result = [];
-
-        foreach ($rows as $row) {
-            if ( ! isset($result[$row[$keyBy]])) {
-                $result[$row[$keyBy]] = [];
-            }
-
-            $result[$row[$keyBy]][] = new PropertyInfo($row['id'], $row['alias'], $row['value_type']);
-        }
-
-        return $result;
-    }
-
-
     public function getPropertyTypeVariantsByIds(array $propertyIds): array
     {
         $qb = $this->connection->createQueryBuilder();
@@ -94,6 +61,22 @@ class PropertyFinder
 
         return new PropertyInfo($propertyRow['id'], $propertyRow['alias'], $propertyRow['value_type']);
 
+    }
+
+
+    private function makeResultFromRows(array $rows, string $keyBy): array
+    {
+        $result = [];
+
+        foreach ($rows as $row) {
+            if ( ! isset($result[$row[$keyBy]])) {
+                $result[$row[$keyBy]] = [];
+            }
+
+            $result[$row[$keyBy]][] = new PropertyInfo($row['id'], $row['alias'], $row['value_type']);
+        }
+
+        return $result;
     }
 
 }

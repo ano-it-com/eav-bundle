@@ -22,9 +22,15 @@ interface EAVEntityManagerInterface
     public function persist(EAVPersistableInterface $entity): void;
 
 
+    public function forget(EAVPersistableInterface ...$entities): void;
+
+
     public function flush(): void;
 
 
     public function remove($entity): void;
+
+
+    public function clear(): void;
 
 }

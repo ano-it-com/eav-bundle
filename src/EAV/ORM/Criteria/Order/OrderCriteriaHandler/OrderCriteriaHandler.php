@@ -7,7 +7,7 @@ use ANOITCOM\EAVBundle\EAV\ORM\Criteria\Order\OrderCriteriaInterface;
 use ANOITCOM\EAVBundle\EAV\ORM\EntityManager\Settings\EAVSettings;
 use Doctrine\DBAL\Query\QueryBuilder;
 
-class OrderCriteriaHandler
+class OrderCriteriaHandler implements OrderCriteriaHandlerInterface
 {
 
     private JoinHandler $joinHandler;

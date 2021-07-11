@@ -2,17 +2,16 @@
 
 namespace ANOITCOM\EAVBundle\EAV\ORM\Repository;
 
-interface EAVTypeRepositoryInterface
+use ANOITCOM\EAVBundle\EAV\ORM\Entity\Type\EAVType;
+
+/**
+ *
+ * @method EAVType[] findBy(array $criteria, array $orderBy = [], $limit = null, $offset = null)
+ * @method EAVType|null findOneBy(array $criteria, array $orderBy = [])
+ * @method EAVType|null find(string $id)
+ *
+ */
+interface EAVTypeRepositoryInterface extends EAVRepositoryInterface
 {
 
-    public function findBy(array $criteria, array $orderBy = [], $limit = null, $offset = null);
-
-
-    /**
-     * Return ENTITY class, not TYPE class.
-     * Because, each Entity must have only one concrete type class.
-     *
-     * @return string
-     */
-    public function getEntityClass(): string;
 }

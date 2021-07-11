@@ -2,11 +2,16 @@
 
 namespace ANOITCOM\EAVBundle\EAV\ORM\Repository;
 
-interface EAVEntityRepositoryInterface
+use ANOITCOM\EAVBundle\EAV\ORM\Entity\Entity\EAVEntity;
+
+/**
+ *
+ * @method EAVEntity[] findBy(array $criteria, array $orderBy = [], $limit = null, $offset = null)
+ * @method EAVEntity|null findOneBy(array $criteria, array $orderBy = [])
+ * @method EAVEntity|null find(string $id)
+ *
+ */
+interface EAVEntityRepositoryInterface extends EAVRepositoryInterface
 {
 
-    public function findBy(array $criteria, int $refDepth = 0, array $orderBy = [], $limit = null, $offset = null);
-
-
-    public function getEntityClass(): string;
 }

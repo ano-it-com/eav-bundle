@@ -5,10 +5,13 @@ namespace ANOITCOM\EAVBundle\Install;
 use ANOITCOM\EAVBundle\DependencyInjection\Configuration;
 use Symfony\Component\Config\Definition\Dumper\YamlReferenceDumper;
 use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
+use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 use Symfony\Component\Filesystem\Filesystem;
+use Symfony\Component\Finder\Finder;
 use Symfony\Component\HttpKernel\KernelInterface;
 
 class InstallCommand extends Command
@@ -26,14 +29,24 @@ class InstallCommand extends Command
      */
     private $kernel;
 
+    private string $migrationsDir;
+
 
     public function __construct(
         KernelInterface $kernel,
-        Filesystem $fs
+        Filesystem $fs,
+        string $migrationsDir
     ) {
         parent::__construct(self::$defaultName);
-        $this->kernel = $kernel;
-        $this->fs     = $fs;
+        $this->kernel        = $kernel;
+        $this->fs            = $fs;
+        $this->migrationsDir = $migrationsDir;
+    }
+
+
+    protected function configure()
+    {
+        $this->addArgument('actions', InputArgument::OPTIONAL | InputArgument::IS_ARRAY, 'Available options: migration, config');
     }
 
 
@@ -41,20 +54,48 @@ class InstallCommand extends Command
     {
         $io = new SymfonyStyle($input, $output);
 
+        $actions = $this->getActionsToDo($input);
+
         $io->writeln('Installing EAV Bundle');
-        $io->writeln('Installing config...');
 
-        $configPath = $this->installConfig();
+        if (in_array('config', $actions, true)) {
+            $io->writeln('Installing config...');
 
-        $io->success('Config installed to ' . $configPath);
+            $configPath = $this->installConfig();
 
-        $io->writeln('Installing migrations...');
-        $migrationsPath = $this->installMigrations();
+            $io->success('Config installed to ' . $configPath);
+        }
 
-        $io->success('Migrations installed to ' . $migrationsPath);
+        if (in_array('migration', $actions, true)) {
+            $io->writeln('Installing migrations...');
+            if ($this->isMigrationAlreadyInstalled()) {
+                $io->warning('Migrations are already installed to ' . $this->migrationsDir);
+            } else {
+                $this->installMigrations();
+                $io->success('Migrations installed to ' . $this->migrationsDir);
+            }
+        }
+
+        $io->success('Installation complete successful');
 
         return 0;
 
+    }
+
+
+    private function isMigrationAlreadyInstalled(): bool
+    {
+        $finder = new Finder();
+        $finder->files()->in($this->migrationsDir);
+
+        foreach ($finder as $file) {
+            $migrationsContent = $file->getContents();
+            if (stripos($migrationsContent, 'EAV MIGRATION MARK - DO NOT DELETE') !== false) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
 
@@ -71,16 +112,11 @@ class InstallCommand extends Command
     }
 
 
-    private function installMigrations(): string
+    private function installMigrations(): void
     {
-
         [ $migrationContent, $className ] = $this->compileMigration();
 
-        $path = $this->kernel->getProjectDir() . '/migrations/' . $className . '.php';
-
-        $this->fs->dumpFile($path, $migrationContent);
-
-        return $path;
+        $this->fs->dumpFile($this->migrationsDir . '/' . $className . '.php', $migrationContent);
     }
 
 
@@ -97,5 +133,37 @@ class InstallCommand extends Command
 
         return [ $content, $className ];
 
+    }
+
+
+    /**
+     * @param InputInterface $input
+     *
+     * @return string[]
+     */
+    private function getActionsToDo(InputInterface $input): array
+    {
+        $allActions = [
+            'migration',
+            'config',
+        ];
+
+        $actions = $input->getArgument('actions');
+
+        if ( ! count($actions)) {
+            return $allActions;
+        }
+
+        $actionsToDo = [];
+
+        foreach ($actions as $action) {
+            if ( ! in_array($action, $allActions, true)) {
+                throw new \InvalidArgumentException('Action \'' . $action . '\' not supported!');
+            }
+
+            $actionsToDo[] = $action;
+        }
+
+        return $actionsToDo;
     }
 }

@@ -11,9 +11,19 @@
     }
   ],
   "require": {
-    "php": "^7.4"
+    "php": "^7.4",
+    "doctrine/dbal": "^2.10",
+    "doctrine/doctrine-bundle": "^2.2",
+    "doctrine/doctrine-fixtures-bundle": "^3.4",
+    "doctrine/doctrine-migrations-bundle": "^3.0",
+    "ramsey/uuid": "^4.1",
+    "symfony/finder": "^5.2",
+    "symfony/framework-bundle": "^5.2",
+    "symfony/yaml": "^5.2",
+    "ext-mbstring": "*"
   },
   "require-dev": {
+    "phpunit/phpunit": "^9.4"
   },
   "config": {
     "sort-packages": true
@@ -34,7 +44,7 @@
   "extra": {
     "symfony": {
       "allow-contrib": false,
-      "require": "5.1.*"
+      "require": "^5.2"
     }
   }
 }

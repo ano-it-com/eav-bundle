@@ -8,9 +8,6 @@ use Symfony\Component\DependencyInjection\ServiceLocator;
 class EAVPersistersLocator
 {
 
-    /**
-     * @var ServiceLocator
-     */
     protected ServiceLocator $persistersLocator;
 
 
@@ -20,15 +17,15 @@ class EAVPersistersLocator
     }
 
 
-    public function getPersisterByClass(string $code): EAVPersisterInterface
+    public function get(string $class): EAVPersisterInterface
     {
-        return $this->persistersLocator->get($code);
+        return $this->persistersLocator->get($class);
     }
 
 
-    public function hasPersisterByClass(string $code): bool
+    public function has(string $class): bool
     {
-        return $this->persistersLocator->has($code);
+        return $this->persistersLocator->has($class);
     }
 
 }

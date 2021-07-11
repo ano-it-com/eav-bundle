@@ -25,10 +25,10 @@ class WhereInClause extends AbstractClause implements ClauseInterface
     }
 
 
-    protected function makeExpression(QueryBuilder $qb, EAVSettings $eavSettings, ColumnInterface $column, string $parameterName): FilterExpression
+    protected function makeExpression(QueryBuilder $qb, string $tableName, ColumnInterface $column, EAVSettings $eavSettings, string $parameterName): FilterExpression
     {
 
-        $expr = $qb->expr()->in($column->getFullName($eavSettings), ':' . $parameterName);
+        $expr = $qb->expr()->in($column->getFullName($tableName), ':' . $parameterName);
 
         return new FilterExpression($expr, [ [ $parameterName, $this->values, Connection::PARAM_STR_ARRAY ] ], $this->column->getJoinTables($eavSettings), $this->isAnd);
 

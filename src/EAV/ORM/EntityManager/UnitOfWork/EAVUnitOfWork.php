@@ -4,6 +4,8 @@ namespace ANOITCOM\EAVBundle\EAV\ORM\EntityManager\UnitOfWork;
 
 use ANOITCOM\EAVBundle\EAV\ORM\Entity\EAVPersistableInterface;
 use ANOITCOM\EAVBundle\EAV\ORM\EntityManager\EAVEntityManagerInterface;
+use ANOITCOM\EAVBundle\EAV\ORM\EntityManager\UnitOfWork\BulkProcessor\BulkPlan;
+use ANOITCOM\EAVBundle\EAV\ORM\EntityManager\UnitOfWork\BulkProcessor\BulkProcessor;
 use ANOITCOM\EAVBundle\EAV\ORM\Persistence\Persister\EAVPersisterInterface;
 use ANOITCOM\EAVBundle\EAV\ORM\Persistence\PersistersFactory\EAVPersistersFactoryInterface;
 
@@ -142,11 +144,20 @@ class EAVUnitOfWork implements EAVUnitOfWorkInterface
     {
         $this->computeChangeSets();
 
+        if ( ! count($this->toUpdate) && ! count($this->toInsert) && ! count($this->toDelete)) {
+            $this->clearAfterCommit();
+
+            return;
+        }
+
         $conn = $this->em->getConnection();
         $conn->beginTransaction();
 
-        // TODO cache class to persister mapping
+        $bulkPlan      = new BulkPlan($this);
+        $bulkProcessor = new BulkProcessor($this, $this->em->getConnection());
+
         try {
+            // cannot be bulk processed
             foreach ($this->toUpdate as $oid => $entity) {
                 $changeSet = $this->entityChangeSets[$oid];
 
@@ -159,19 +170,15 @@ class EAVUnitOfWork implements EAVUnitOfWorkInterface
             }
 
             foreach ($this->toInsert as $oid => $entity) {
-                $persister = $this->getPersisterForClass(get_class($entity));
-
-                $persister->insert($entity);
-
-                $this->registerManaged($entity, $persister->getCurrentState($entity));
+                $bulkPlan->addInsert($entity);
             }
 
             foreach ($this->toDelete as $oid => $entity) {
-                $persister = $this->getPersisterForClass(get_class($entity));
-
-                $persister->delete($entity);
+                $bulkPlan->addDelete($entity);
 
             }
+
+            $bulkProcessor->execute($bulkPlan);
 
             $conn->commit();
         } catch (\Throwable $e) {
@@ -201,7 +208,7 @@ class EAVUnitOfWork implements EAVUnitOfWorkInterface
                 }
 
                 if ($entityState === self::STATE_MANAGED && ! isset($this->toInsert[$oid])) {
-                    $persister = $this->persistersFactory->getForClass(get_class($entity), $this->em);
+                    $persister = $this->persistersFactory->getForEntityClass(get_class($entity), $this->em);
 
                     $changes = $this->computeChanges($entity, $persister);
 
@@ -227,7 +234,7 @@ class EAVUnitOfWork implements EAVUnitOfWorkInterface
 
     public function getPersisterForClass(string $class): EAVPersisterInterface
     {
-        return $this->persistersFactory->getForClass($class, $this->em);
+        return $this->persistersFactory->getForEntityClass($class, $this->em);
     }
 
 
@@ -296,4 +303,37 @@ class EAVUnitOfWork implements EAVUnitOfWorkInterface
         unset($this->identityMap[$entityClass][$entityId]);
     }
 
+
+    public function get(string $entityClass, string $id): ?EAVPersistableInterface
+    {
+        return $this->identityMap[$entityClass][$id] ?? null;
+    }
+
+
+    public function has(string $entityClass, string $id): bool
+    {
+        return isset($this->identityMap[$entityClass][$id]);
+    }
+
+
+    public function clear(): void
+    {
+        $this->entityStates =
+        $this->originalEntityData =
+        $this->entityChangeSets =
+        $this->identityMap =
+        $this->toInsert =
+        $this->toUpdate =
+        $this->toDelete = [];
+    }
+
+
+    public function forget(EAVPersistableInterface $entity): void
+    {
+        $oid = spl_object_hash($entity);
+
+        $this->removeFromIdentityMap($entity);
+
+        unset($this->entityStates[$oid], $this->originalEntityData[$oid], $this->toInsert[$oid], $this->toUpdate[$oid], $this->toDelete[$oid], $this->entityChangeSets[$oid]);
+    }
 }

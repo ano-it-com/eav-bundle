@@ -20,6 +20,9 @@ interface EAVUnitOfWorkInterface
     public function commit(): void;
 
 
+    public function forget(EAVPersistableInterface $entity): void;
+
+
     public function remove(EAVPersistableInterface $entity): void;
 
 }

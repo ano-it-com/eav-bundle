@@ -2,153 +2,99 @@
 
 namespace ANOITCOM\EAVBundle\EAV\ORM\Persistence\Persister\Type\Builder;
 
-use ANOITCOM\EAVBundle\EAV\ORM\Entity\EAVPersistableInterface;
-use ANOITCOM\EAVBundle\EAV\ORM\Entity\EAVType;
-use ANOITCOM\EAVBundle\EAV\ORM\Entity\EAVTypeProperty;
-use ANOITCOM\EAVBundle\EAV\ORM\EntityManager\EAVEntityManagerInterface;
-use ANOITCOM\EAVBundle\EAV\ORM\Persistence\Persister\EAVHydratorInterface;
+use ANOITCOM\EAVBundle\EAV\ORM\EntityManager\Settings\EAVSettings;
+use ANOITCOM\EAVBundle\EAV\ORM\Persistence\Hydrator\AbstractWithNestedEntitiesHydrator;
+use ANOITCOM\EAVBundle\EAV\ORM\Persistence\Hydrator\EAVHydratorInterface;
 
-class EAVTypeHydrator implements EAVHydratorInterface
+class EAVTypeHydrator extends AbstractWithNestedEntitiesHydrator implements EAVHydratorInterface
 {
 
-    /**
-     * @var EAVEntityManagerInterface
-     */
-    protected $em;
-
-
-    public function __construct(EAVEntityManagerInterface $em)
+    public function getEntityClass(): string
     {
-        $this->em = $em;
+        return $this->em->getEavSettings()->getClassForEntityType(EAVSettings::TYPE);
     }
 
 
-    public function hydrate(array $typeRows): array
+    public function getNestedEntityClass(): string
     {
-        $uow      = $this->em->getUnitOfWork();
-        $entities = [];
-
-        foreach ($typeRows as $typeData) {
-            $entity = $this->createEntity($typeData);
-            $uow->registerManaged($entity, $typeData);
-            $entities[] = $entity;
-        }
-
-        return $entities;
+        return $this->em->getEavSettings()->getClassForEntityType(EAVSettings::TYPE_PROPERTY);
     }
 
 
-    protected function createEntity(array $typeData): EAVType
+    protected function getDataFieldForNestedEntities(): string
     {
-        $propertyData = $typeData['_properties'];
-        unset($typeData['_properties']);
-
-        $properties = [];
-        foreach ($propertyData as $propertyDatum) {
-            $properties[] = $this->createProperty($propertyDatum);
-        }
-
-        return $this->createType($typeData, $properties);
+        return '_properties';
     }
 
 
-    protected function createProperty(array $propertyDatum): EAVTypeProperty
+    protected function getEntityFieldForNestedEntities(): string
     {
-        $reflector = new \ReflectionClass(EAVTypeProperty::class);
+        return 'properties';
+    }
 
-        /** @var EAVTypeProperty $property */
-        $property = $reflector->newInstanceWithoutConstructor();
 
+    protected function getEntityDbExcludeFields(): array
+    {
+        return [ 'namespace_id' ];
+    }
+
+
+    protected function getNestedDbExcludeFields(): array
+    {
+        return [ 'namespace_id', 'value_type' ];
+    }
+
+
+    protected function getHydrationCallback(): ?callable
+    {
+        return static function (object $entity, array $entityData) {
+
+            $entity->namespace = $entityData['_namespace'];
+        };
+    }
+
+
+    protected function getExtractionCallback(): ?callable
+    {
+        return static function (array &$data, object $object) {
+            $data['namespace_id'] = $object->getNamespace()->getId();
+        };
+    }
+
+
+    protected function getNestedHydrationCallback(): ?callable
+    {
         $eavSettings = $this->em->getEavSettings();
 
-        $closure = \Closure::bind(static function ($object, $values) use ($eavSettings) {
-            if (\array_key_exists('id', $values)) {
-                $object->id = $values['id'];
+        return static function (object $entity, array $entityData) use ($eavSettings) {
+            if (\array_key_exists('value_type', $entityData)) {
+                $entity->valueType = $eavSettings->getValueTypeByCode($entityData['value_type']);
+                $entity->namespace = $entityData['_namespace'];
             }
-            if (\array_key_exists('type_id', $values)) {
-                $object->typeId = $values['type_id'];
-            }
-            if (\array_key_exists('value_type', $values)) {
-                $object->valueType = $eavSettings->getValueTypeByCode($values['value_type']);
-            }
-            if (\array_key_exists('alias', $values)) {
-                $object->alias = $values['alias'];
-            }
-            if (\array_key_exists('title', $values)) {
-                $object->title = $values['title'];
-            }
-            if (\array_key_exists('meta', $values)) {
-                $object->meta = $values['meta'];
-            }
-        }, null, EAVTypeProperty::class);
-
-        $closure->__invoke($property, $propertyDatum);
-
-        return $property;
-
+        };
     }
 
 
-    protected function createType(array $typeData, array $properties): EAVType
+    protected function getNestedExtractionCallback(): ?callable
     {
-        $reflector = new \ReflectionClass(EAVType::class);
-
-        /** @var EAVType $type */
-        $type = $reflector->newInstanceWithoutConstructor();
-
-        $closure = \Closure::bind(static function ($object, $values, $properties) {
-            if (\array_key_exists('id', $values)) {
-                $object->id = $values['id'];
-            }
-            if (\array_key_exists('alias', $values)) {
-                $object->alias = $values['alias'];
-            }
-            if (\array_key_exists('title', $values)) {
-                $object->title = $values['title'];
-            }
-            if (\array_key_exists('meta', $values)) {
-                $object->meta = $values['meta'];
-            }
-            $object->properties = $properties;
-        }, null, EAVType::class);
-
-        $closure->__invoke($type, $typeData, $properties);
-
-        return $type;
+        return static function (array &$data, object $object, object $parentObject) {
+            $data['value_type']   = $object->valueType->getCode();
+            $data['namespace_id'] = $object->getNamespace()->getId();
+        };
     }
 
 
-    public function extract(EAVPersistableInterface $entity): array
+    protected function removeTemporaryKeys(array $data): array
     {
-        $propertiesClosure = \Closure::bind(function ($property) {
-            return [
-                'id'         => $property->id,
-                'type_id'    => $property->typeId,
-                'value_type' => $property->valueType->getCode(),
-                'alias'      => $property->alias,
-                'title'      => $property->title,
-                'meta'       => $property->meta,
-            ];
+        unset($data['_namespace']);
 
-        }, null, EAVTypeProperty::class);
+        foreach ($data['_properties'] as $i => &$property) {
+            unset($property['_namespace']);
+        }
 
-        $closure = \Closure::bind(function ($object) use ($propertiesClosure) {
-            $properties = array_map(function ($value) use ($propertiesClosure) {
-                return $propertiesClosure->__invoke($value);
-            }, $object->properties);
+        unset($property);
 
-            return [
-                'id'          => $object->id,
-                'alias'       => $object->alias,
-                'title'       => $object->title,
-                'meta'        => $object->meta,
-                '_properties' => $properties,
-            ];
-
-        }, null, EAVType::class);
-
-        return $closure->__invoke($entity);
-
-
+        return $data;
     }
+
 }

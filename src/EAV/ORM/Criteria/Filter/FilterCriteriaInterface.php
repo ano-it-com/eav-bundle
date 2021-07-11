@@ -18,4 +18,7 @@ interface FilterCriteriaInterface
      */
     public function getExpressions(QueryBuilder $qb, EAVSettings $eavSettings): array;
 
+
+    public function supports(string $entityType): bool;
+
 }

@@ -2,151 +2,124 @@
 
 namespace ANOITCOM\EAVBundle\EAV\ORM\Persistence\Persister\Entity\Builder;
 
-use ANOITCOM\EAVBundle\EAV\ORM\Entity\EAVEntity;
-use ANOITCOM\EAVBundle\EAV\ORM\Entity\EAVEntityPropertyValue;
-use ANOITCOM\EAVBundle\EAV\ORM\Entity\EAVPersistableInterface;
 use ANOITCOM\EAVBundle\EAV\ORM\EntityManager\EAVEntityManagerInterface;
-use ANOITCOM\EAVBundle\EAV\ORM\Persistence\Persister\EAVHydratorInterface;
+use ANOITCOM\EAVBundle\EAV\ORM\EntityManager\Settings\EAVSettings;
+use ANOITCOM\EAVBundle\EAV\ORM\Persistence\Hydrator\AbstractWithNestedEntitiesHydrator;
+use ANOITCOM\EAVBundle\EAV\ORM\Persistence\Hydrator\EAVHydratorInterface;
+use ANOITCOM\EAVBundle\EAV\ORM\Persistence\Hydrator\NamesConverter;
+use ANOITCOM\EAVBundle\EAV\ORM\Persistence\ValueTypeConverter\ValueTypeConverter;
 
-class EAVEntityHydrator implements EAVHydratorInterface
+class EAVEntityHydrator extends AbstractWithNestedEntitiesHydrator implements EAVHydratorInterface
 {
 
-    /**
-     * @var EAVEntityManagerInterface
-     */
-    protected $em;
+    private ValueTypeConverter $valueTypeConverter;
 
 
-    public function __construct(EAVEntityManagerInterface $em)
+    public function __construct(EAVEntityManagerInterface $em, NamesConverter $namesConverter, ValueTypeConverter $valueTypeConverter)
     {
-        $this->em = $em;
+        parent::__construct($em, $namesConverter);
+        $this->valueTypeConverter = $valueTypeConverter;
     }
 
 
-    public function hydrate(array $entityRows): array
+    public function getEntityClass(): string
     {
-        $uow      = $this->em->getUnitOfWork();
-        $entities = [];
-
-        foreach ($entityRows as $entityData) {
-            $entity = $this->createEntity($entityData);
-            $uow->registerManaged($entity, $this->removeTemporaryKeys($entityData));
-            $entities[] = $entity;
-        }
-
-        return $entities;
+        return $this->em->getEavSettings()->getClassForEntityType(EAVSettings::ENTITY);
     }
 
 
-    protected function createEntity(array $entityData): EAVEntity
+    public function getNestedEntityClass(): string
     {
-        $valuesData = $entityData['_values'];
-
-        $values = [];
-        foreach ($valuesData as $valueData) {
-            $values[] = $this->createValue($valueData);
-        }
-
-        return $this->createEntityObject($entityData, $values);
+        return $this->em->getEavSettings()->getClassForEntityType(EAVSettings::VALUES);
     }
 
 
-    protected function createValue(array $valueData): EAVEntityPropertyValue
+    protected function getDataFieldForNestedEntities(): string
     {
-        $reflector = new \ReflectionClass(EAVEntityPropertyValue::class);
-
-        /** @var EAVEntityPropertyValue $value */
-        $value = $reflector->newInstanceWithoutConstructor();
-
-        $closure = \Closure::bind(static function ($object, $values) {
-            if (\array_key_exists('id', $values)) {
-                $object->id = $values['id'];
-            }
-            if (\array_key_exists('_value', $values)) {
-                $object->value = $values['_value'];
-            }
-            if (\array_key_exists('type_property_id', $values)) {
-                $object->typePropertyId = $values['type_property_id'];
-            }
-            if (\array_key_exists('_value_type', $values)) {
-                $object->valueType = $values['_value_type'];
-            }
-            if (\array_key_exists('meta', $values)) {
-                $object->meta = $values['meta'];
-            }
-        }, null, EAVEntityPropertyValue::class);
-
-        $closure->__invoke($value, $valueData);
-
-        return $value;
-
+        return '_values';
     }
 
 
-    protected function createEntityObject(array $entityData, array $values): EAVEntity
+    protected function getEntityFieldForNestedEntities(): string
     {
-        $reflector = new \ReflectionClass(EAVEntity::class);
+        return 'values';
+    }
 
-        /** @var EAVEntity $entity */
-        $entity = $reflector->newInstanceWithoutConstructor();
 
-        $closure = \Closure::bind(static function ($object, $data, $values) {
-            if (\array_key_exists('id', $data)) {
-                $object->id = $data['id'];
+    protected function getEntityDbExcludeFields(): array
+    {
+        return [ 'type_id', 'namespace_id' ];
+    }
+
+
+    protected function getNestedDbExcludeFields(): array
+    {
+        return [ 'type_id', 'namespace_id', 'entity_id' ];
+    }
+
+
+    protected function getHydrationCallback(): ?callable
+    {
+        return static function (object $entity, array $entityData) {
+            $entity->type      = $entityData['_type'];
+            $entity->namespace = $entityData['_namespace'];
+        };
+    }
+
+
+    protected function getNestedHydrationCallback(): ?callable
+    {
+        $valuesConverter = $this->valueTypeConverter;
+
+        return static function (object $entity, array $entityData) use ($valuesConverter) {
+            if (\array_key_exists('_value', $entityData)) {
+                $entity->value = $valuesConverter->convertToPhpByValueTypeCode($entityData['_value_type'], $entityData['_value']);
             }
-            if (\array_key_exists('meta', $data)) {
-                $object->meta = $data['meta'];
-            }
-            $object->type   = $data['_type'];
-            $object->values = $values;
-        }, null, EAVEntity::class);
 
-        $closure->__invoke($entity, $entityData, $values);
-
-        return $entity;
+            $entity->valueTypeCode = $entityData['_value_type'];
+            $entity->namespace     = $entityData['_namespace'];
+        };
     }
 
 
     protected function removeTemporaryKeys(array $data): array
     {
-        unset($data['_type']);
+        unset($data['_type'], $data['_namespace']);
 
         return $data;
     }
 
 
-    public function extract(EAVPersistableInterface $entity): array
+    protected function getExtractionCallback(): ?callable
     {
-        $valueClosure = \Closure::bind(function ($propertyValue, $entityId) {
-            return [
-                'id'               => $propertyValue->id,
-                'entity_id'        => $entityId,
-                'value'            => $propertyValue->value,
-                'type_property_id' => $propertyValue->typePropertyId,
-                'meta'             => $propertyValue->meta,
-                '_value_type'      => $propertyValue->valueType,
-            ];
-
-        }, null, EAVEntityPropertyValue::class);
-
-        $closure = \Closure::bind(function ($object) use ($valueClosure) {
-            $objectId = $object->id;
-
-            $values = array_map(function ($value) use ($valueClosure, $objectId) {
-                return $valueClosure->__invoke($value, $objectId);
-            }, $object->values);
-
-            return [
-                'id'      => $objectId,
-                'meta'    => $object->meta,
-                'type_id' => $object->getType()->getId(),
-                '_values' => $values,
-            ];
-
-        }, null, EAVEntity::class);
-
-        return $closure->__invoke($entity);
-
-
+        return static function (array &$data, object $object) {
+            $data['type_id']      = $object->getType()->getId();
+            $data['namespace_id'] = $object->getNamespace()->getId();
+        };
     }
+
+
+    protected function getNestedExtractionCallback(): ?callable
+    {
+        $settings        = $this->em->getEavSettings();
+        $valuesConverter = $this->valueTypeConverter;
+        $valueColumns    = $settings->getAllValueColumnsNames();
+
+        return static function (array &$data, object $object, object $parentObject) use ($valuesConverter, $valueColumns, $settings) {
+            $value = $valuesConverter->convertToDatabaseByValueTypeCode($object->valueTypeCode, $object->value);
+
+            $data['entity_id']    = $parentObject->getId();
+            $data['_value']       = $value;
+            $data['_value_type']  = $object->valueTypeCode;
+            $data['namespace_id'] = $object->getNamespace()->getId();
+
+            foreach ($valueColumns as $column) {
+                $data[$column] = null;
+            }
+
+            $valueColumn        = $settings->getColumnNameForValueType($object->valueTypeCode);
+            $data[$valueColumn] = $value;
+        };
+    }
+
 }

@@ -8,19 +8,29 @@ use ANOITCOM\EAVBundle\EAV\ORM\DBAL\ValueTypes;
 class EAVSettings
 {
 
-    private array $config;
+    public const NAMESPACE = 'namespace';
+    public const ENTITY = 'entity';
+    public const TYPE = 'type';
+    public const TYPE_PROPERTY = 'type_property';
+    public const VALUES = 'values';
+    public const ENTITY_RELATION = 'entity_relation';
+    public const ENTITY_RELATION_TYPE = 'entity_relation_type';
 
-    /**
-     * @var ValueTypes
-     */
+    private FieldValueTypeMapping $fieldValueTypeMapping;
+
+    private array $entitySettingsByType;
+
+    private array $entitySettingsByClass;
+
     private ValueTypes $valueTypes;
 
 
-    public function __construct(array $config, ValueTypes $valueTypes)
+    public function __construct(ValueTypes $valueTypes, FieldValueTypeMapping $fieldValueTypeMapping, array $entitySettings)
     {
-
-        $this->config     = $config;
-        $this->valueTypes = $valueTypes;
+        $this->fieldValueTypeMapping = $fieldValueTypeMapping;
+        $this->entitySettingsByType  = $entitySettings;
+        $this->entitySettingsByClass = array_combine(array_map(function (EAVEntitySettings $entitySettings) { return $entitySettings->getEntityClass(); }, $entitySettings), $entitySettings);
+        $this->valueTypes            = $valueTypes;
     }
 
 
@@ -30,136 +40,70 @@ class EAVSettings
     }
 
 
-    public function getEntityTableName(): string
+    public function getClassForEntityType(string $entityType): string
     {
-        $name = $this->config['base_tables']['eav_entity']['table'] ?? null;
+        return $this->getEntitySettingsByType($entityType)->getEntityClass();
+    }
 
-        if ($name === null) {
-            throw new \RuntimeException('Entity Table Name not found in config');
+
+    private function getEntitySettingsByType(string $entityType): EAVEntitySettings
+    {
+        $entitySettings = $this->entitySettingsByType[$entityType] ?? null;
+
+        if ($entitySettings === null) {
+            throw new \RuntimeException('Entity settings for entity type \'' . $entityType . '\' not found in config');
         }
 
-        return $name;
+        return $entitySettings;
     }
 
 
-    public function getTypeTableName(): string
+    private function getEntitySettingsByClass(string $entityClass): EAVEntitySettings
     {
-        $name = $this->config['base_tables']['eav_type']['table'] ?? null;
+        $entitySettings = $this->entitySettingsByClass[$entityClass] ?? null;
 
-        if ($name === null) {
-            throw new \RuntimeException('Type Table Name not found in config');
+        if ($entitySettings === null) {
+            throw new \RuntimeException('Entity settings for entity class \'' . $entityClass . '\' not found in config');
         }
 
-        return $name;
+        return $entitySettings;
     }
 
 
-    public function getTypePropertyTableName(): string
+    public function getTableNameForEntityType(string $entityType): string
     {
-        $name = $this->config['base_tables']['eav_type_property']['table'] ?? null;
-
-        if ($name === null) {
-            throw new \RuntimeException('Type Property Table Name not found in config');
-        }
-
-        return $name;
+        return $this->getEntitySettingsByType($entityType)->getTableName();
     }
 
 
-    public function getValuesTableName(): string
+    public function getPersisterClassForEntityClass(string $entityType): string
     {
-        $name = $this->config['base_tables']['eav_values']['table'] ?? null;
-
-        if ($name === null) {
-            throw new \RuntimeException('Type Property Table Name not found in config');
-        }
-
-        return $name;
+        return $this->getEntitySettingsByClass($entityType)->getPersisterClass();
     }
 
 
-    public function getEntityRelationsTableName(): string
-    {
-        // TODO - add to package config
-        return 'eav_entity_relation';
-    }
-
-
-    public function getTypeRelationsTableName(): string
-    {
-        // TODO - add to package config
-        return 'eav_type_relation';
-    }
-
-
-    /**
-     * @return string[]
-     */
-    public function getValueTablesNames(): array
-    {
-        $valuesTablesConfig = $this->config['values_tables'] ?? [];
-
-        return array_map(function (array $tableConfig) { return $tableConfig['table']; }, $valuesTablesConfig);
-    }
-
-
-    //TODO - precalculate all value columns
     public function getColumnNameForValueType(int $valueType): string
     {
-        $type      = $this->valueTypes->getByCode($valueType);
-        $typeClass = get_class($type);
-
-        $foundColumns = [];
-
-        $valueColumnsConfig = $this->config['base_tables']['eav_values']['columns'] ?? [];
-        foreach ($valueColumnsConfig as $columnName => $types) {
-
-            if (stripos($columnName, 'value_') !== 0) {
-                continue;
-            }
-
-            if ($types && ! is_array($types)) {
-                $types = [ $types ];
-            }
-
-            if (in_array($typeClass, $types, true)) {
-                $foundColumns[] = $columnName;
-            }
-        }
-
-        if ( ! count($foundColumns)) {
-            throw new \RuntimeException('Table for type ' . $valueType . ' not found!');
-        }
-
-        if (count($foundColumns) > 1) {
-            throw new \RuntimeException('Table for type ' . $valueType . ' is ambiguous - check config!');
-        }
-
-        return $foundColumns[0];
+        return $this->fieldValueTypeMapping->getColumnNameForValueType($valueType);
     }
 
 
     public function getAllValueColumnsNames(): array
     {
-        $foundColumns = [];
-
-        $valueColumnsConfig = $this->config['base_tables']['eav_values']['columns'] ?? [];
-        foreach ($valueColumnsConfig as $columnName => $types) {
-
-            if (stripos($columnName, 'value_') !== 0) {
-                continue;
-            }
-
-            $foundColumns[] = $columnName;
-        }
-
-        return $foundColumns;
+        return $this->fieldValueTypeMapping->getAllValueColumnsNames();
     }
 
 
-    public function getBaseTypeClass(): string
+    public function getValueTypeForField(string $class, string $field): ValueTypeInterface
     {
-        return $this->config['base_type_class'];
+        return $this->fieldValueTypeMapping->getValueTypeForField($class, $field);
+
+    }
+
+
+    public function getFieldsMappingForEntityClass(string $class): array
+    {
+        return $this->fieldValueTypeMapping->getMappingForEntityClass($class);
     }
 
 }

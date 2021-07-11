@@ -2,7 +2,7 @@
 
 namespace ANOITCOM\EAVBundle\DependencyInjection;
 
-use ANOITCOM\EAVBundle\EAV\ORM\EntityManager\Settings\EAVSettings;
+use ANOITCOM\EAVBundle\EAV\ORM\EntityManager\Settings\EAVSettingsFactory;
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Extension\Extension;
@@ -24,7 +24,7 @@ class EAVExtension extends Extension
         $config        = $this->processConfiguration($configuration, $configs);
 
         $container
-            ->getDefinition(EAVSettings::class)
+            ->getDefinition(EAVSettingsFactory::class)
             ->addArgument($config);
 
 

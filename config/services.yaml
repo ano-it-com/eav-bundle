@@ -24,4 +24,5 @@ services:
 
   ANOITCOM\EAVBundle\EAV\ORM\Persistence\PersistersFactory\EAVPersistersLocator:
     arguments:
-      $persistersLocator: !tagged_locator { tag: 'ANOITCOM.eav.persister', index_by: 'key', default_index_method: 'getSupportedClass' }
+      $persistersLocator: !tagged_locator { tag: 'ANOITCOM.eav.persister' }
+
